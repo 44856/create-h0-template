@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/44856/create-h0-template/issues"
   },
+  "bin": {
+    "h0-template-test": "index.js"
+  },
   "homepage": "https://github.com/44856/create-h0-template#readme"
 }
