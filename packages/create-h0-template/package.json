@@ -1,0 +1,51 @@
+{
+  "name": "create-h0-template",
+  "version": "1.0.4",
+  "description": "依据模板创建项目文件",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/44856/create-h0-template.git",
+    "directory": "packages/create-h0-template"
+  },
+  "engines": {
+    "node": ">=14"
+  },
+  "files": [
+    "index.js",
+    "creat-app.js"
+  ],
+  "scripts": {
+    "start": "ts-node index.ts test --verbose i --template ts",
+    "transpile": "tsc index.ts",
+    "runJs": "node index.js test --verbose true --template ts",
+    "runEsJs": "node dist/index.js test --help"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.2",
+    "@types/fs-extra": "^11.0.1",
+    "@types/node": "^20.2.4",
+    "@types/prompts": "^2.4.4",
+    "@types/semver": "^7.5.0",
+    "@types/tmp": "^0.2.3",
+    "@types/validate-npm-package-name": "^4.0.0"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^10.0.1",
+    "cross-spawn": "^7.0.3",
+    "fs-extra": "^11.1.1",
+    "hyperquest": "^2.1.3",
+    "os": "^0.1.2",
+    "prompts": "^2.4.2",
+    "semver": "^7.5.1",
+    "tar-pack": "^3.4.1",
+    "tmp": "^0.2.1",
+    "validate-npm-package-name": "^5.0.0"
+  },
+  "bin": {
+    "create-h0-template": "./index.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}

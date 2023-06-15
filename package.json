@@ -1,22 +1,12 @@
 {
-  "name": "create-h0-template",
-  "version": "1.0.2",
-  "description": "h0 template create",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "transpile": "tsc"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/44856/create-h0-template.git"
-  },
-  "author": "shenxiaohuan",
+  "keywords": [],
+  "author": "",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/44856/create-h0-template/issues"
-  },
-  "bin": {
-    "create-h0-template": "./index.js"
-  },
-  "homepage": "https://github.com/44856/create-h0-template#readme"
+  "dependencies": {
+    "esbuild": "^0.17.19",
+    "typescript": "^5.1.3"
+  }
 }
