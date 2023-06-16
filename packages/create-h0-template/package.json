@@ -12,7 +12,9 @@
   },
   "files": [
     "index.js",
-    "create-h0-template.js"
+    "create-h0-template.js",
+    "utils",
+    "template"
   ],
   "scripts": {
     "start": "ts-node index.ts pageTo listPage",
