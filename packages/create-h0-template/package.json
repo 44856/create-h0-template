@@ -15,7 +15,7 @@
     "create-h0-template.js"
   ],
   "scripts": {
-    "start": "ts-node index.ts test --verbose i --template ts",
+    "start": "ts-node index.ts pageTo listPage",
     "transpile": "tsc index.ts",
     "runJs": "node index.js test --verbose true --template ts",
     "runEsJs": "node dist/index.js test --help"

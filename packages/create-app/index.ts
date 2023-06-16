@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import * as process from "process";
 import { init } from "./creat-app";
 
@@ -12,7 +14,7 @@ if (major < 14) {
         '   You are running Node ' +
         currentNodeVersion +
         '   .\n' +
-        '   Create React App requires Node 14 or higher. \n' +
+        '   Create h0 template requires Node 14 or higher. \n' +
         '   Please update your version of Node.'
     );
     process.exit(1);
