@@ -12,7 +12,7 @@
   },
   "files": [
     "index.js",
-    "creat-app.js"
+    "create-h0-template.js"
   ],
   "scripts": {
     "start": "ts-node index.ts test --verbose i --template ts",
