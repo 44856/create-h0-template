@@ -1,7 +1,7 @@
 import {Command} from "commander";
 import {cyan, green, yellow} from "chalk";
 import * as process from "process";
-import {supportTemplate} from "./utils/constants";
+import {h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
 import * as semver from "semver";
 import * as path from "path";
 import * as fs from "fs-extra";
@@ -86,13 +86,15 @@ function injectTemplate(appName:string,template:string,version:string,templateVe
             )
         );
     }
-    if(!fs.existsSync('src/pages')){
-        console.error('The directory structure is not right!');
-        process.exit(1);
-    }
+    // 解析注入目录参数
     const originalDirectory = process.cwd();
     const root = path.resolve(originalDirectory);
-    const appPath = path.resolve(root,`src/pages/${appName}`);
+    let appPath = '';
+    if(h0Templates.includes(template)){
+        appPath = injectH0Template(root,appName);
+    }else if(pdaTemplates.includes(template)){
+        appPath = injectPDATemplate(root,appName);
+    }
     fs.ensureDirSync(appPath);
     if(!isSafeToCreateProjectIn(appPath)){
         process.exit(1);
@@ -109,6 +111,28 @@ function injectTemplate(appName:string,template:string,version:string,templateVe
         appPath,
         templateVersion,
     );
+}
+
+function injectH0Template(root:string,appName:string){
+    // 检查目录结构
+    const pageDir = 'src/pages';
+    if(!fs.existsSync(pageDir)){
+        console.error('The directory structure is not right!');
+        process.exit(1);
+    }
+    const appPath = path.resolve(root,`${pageDir}/${appName}`);
+    return appPath;
+}
+
+function injectPDATemplate(root:string,appName:string){
+    // 检查目录结构
+    const pageDir = 'src/modules';
+    if(!fs.existsSync(pageDir)){
+        console.error('The directory structure is not right!');
+        process.exit(1);
+    }
+    const appPath = path.resolve(root,`${pageDir}/${appName}`);
+    return appPath;
 }
 
 function run(
