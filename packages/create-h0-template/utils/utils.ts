@@ -2,6 +2,15 @@ import * as process from "process";
 import * as fs from "fs-extra";
 import * as spawn from "cross-spawn";
 import {bold, cyan, red} from "chalk";
+import {
+    objectExpression,
+    objectProperty,
+    stringLiteral,
+    identifier,
+    numericLiteral,
+    booleanLiteral,
+    arrayExpression
+} from "@babel/types";
 
 export function getNodeVersion() {
     const currentNodeVersion = process.versions.node;
@@ -69,4 +78,29 @@ export function checkThatNpmCanReadCwd() {
         );
     }
     return false;
+}
+
+export function injectObj(obj:{[k:string]:any}){
+    const objExpr:any[] = [];
+    for(const k in obj){
+        const value = (obj as any)[k];
+        if(typeof value === 'string'){
+            objExpr.push(objectProperty(identifier(k),stringLiteral(value)))
+        }else if(typeof value==='number'){
+            objExpr.push(objectProperty(identifier(k),numericLiteral(value)))
+        }else if(typeof value==='boolean'){
+            objExpr.push( objectProperty(identifier(k),booleanLiteral(value)))
+        }else if(Array.isArray(value)){
+            const arrayValue:any[] = value.map((item)=>{
+                const newObj:any[] = [];
+                for(const key in item){
+                    const v = (item as any)[key];
+                    newObj.push(objectProperty(identifier(key),stringLiteral(v)))
+                }
+                return objectExpression(newObj);
+            });
+            objExpr.unshift(objectProperty(identifier(k),arrayExpression(arrayValue)));
+        }
+    }
+    return objectExpression(objExpr);
 }
