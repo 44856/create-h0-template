@@ -80,6 +80,8 @@ export function checkThatNpmCanReadCwd() {
     return false;
 }
 
+// TODO 目前未对undefined,null,object键值类型处理
+// babel注入对象
 export function injectObj(obj:{[k:string]:any}){
     const objExpr:any[] = [];
     for(const k in obj){
