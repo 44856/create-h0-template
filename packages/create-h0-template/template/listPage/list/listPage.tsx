@@ -62,7 +62,7 @@ const TestPageComponent: FC<TestPageProps> = ({ listDs, match: { path } }) => {
           columns={columns}
           queryBar={TableQueryBarType.none}
           customizable
-          customizedCode="column-group"
+          customizedCode={`${modelPrompt}.column-group`}
         />
       </Content>
     </div>

@@ -1,11 +1,16 @@
 import {Command} from "commander";
 import {cyan, green, yellow} from "chalk";
 import * as process from "process";
-import {h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
 import * as semver from "semver";
 import * as path from "path";
 import * as fs from "fs-extra";
-import {checkThatNpmCanReadCwd, isSafeToCreateProjectIn} from "./utils/utils";
+import generator from "@babel/generator";
+import { parse } from "@babel/parser";
+import traverse, {NodePath} from "@babel/traverse";
+import {checkThatNpmCanReadCwd, injectObj, isSafeToCreateProjectIn} from "./utils/utils";
+import {h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
+import {CallExpression, VariableDeclaration} from "@babel/types";
+import {AnyObj, InjectFile, TemplateName} from "./types";
 
 const packageJson = require("./package.json");
 
@@ -22,7 +27,9 @@ export  function init(){
             appName = app;
             template = temp;
         })
-        .option('--template-version','limit template version')
+        .option('--template-version <string>','limit template version')
+        .option('-cli,--cli-version <string>','limit cli version,in hzeroJs or hzeroCli')
+        .option('--sub-module <string>','subModule the app in,only base on H0 structure','aps')
         .allowUnknownOption()
         .on('--help', () => {
             console.log(` Must input ${green('<template-name>')} and ${green('<app-name>')}\n`);
@@ -65,15 +72,32 @@ export  function init(){
         );
         process.exit(1);
     }
+    const opts = program.opts();
     injectTemplate(
-        appName,
+        getNameByTemplate(appName,template),
         template,
         packageJson.version,
-        program.getOptionValue('template-version')
+        opts.templateVersion,
+        opts.cliVersion,
+        opts.subModule
     );
 }
 
-function injectTemplate(appName:string,template:string,version:string,templateVersion:string){
+function getNameByTemplate(appName:string,template:TemplateName) {
+    if(template==='listPage'){
+        return `${appName.charAt(0).toUpperCase()}${appName.slice(1)}`
+    }
+    return appName;
+}
+
+function injectTemplate(
+    appName:string,
+    template:TemplateName,
+    version:string,
+    templateVersion:string,
+    cliVersion:string,
+    subModule:string
+){
     const unsupportedNodeVersion = !semver.satisfies(
         semver.coerce(process.version)||process.version,
         '>=14'
@@ -90,11 +114,14 @@ function injectTemplate(appName:string,template:string,version:string,templateVe
     const originalDirectory = process.cwd();
     const root = path.resolve(originalDirectory);
     let appPath = '';
+    let code:Array<InjectFile> = [];
+    // 依据不同模板处理文件注入内容
     if(h0Templates.includes(template)){
-        appPath = injectH0Template(root,appName);
+        [appPath,code] = injectH0Template(root,appName,cliVersion);
     }else if(pdaTemplates.includes(template)){
-        appPath = injectPDATemplate(root,appName);
+        [appPath,code] = injectPDATemplate(root,appName);
     }
+    // 确保文件夹存在
     fs.ensureDirSync(appPath);
     if(!isSafeToCreateProjectIn(appPath)){
         process.exit(1);
@@ -109,44 +136,153 @@ function injectTemplate(appName:string,template:string,version:string,templateVe
         template,
         version,
         appPath,
+        code,
+        subModule,
         templateVersion,
     );
 }
 
-function injectH0Template(root:string,appName:string){
-    // 检查目录结构
+function injectH0Template(
+    root:string,
+    appName:string,
+    cliVersion:string = 'hzeroJs',
+):[string,Array<InjectFile>] {
     const pageDir = 'src/pages';
+    const routeFilePath = cliVersion === 'hzeroJs' ? 'config/config.ts' : 'src/config/routers.ts'
+    const appPath = path.resolve(root,`${pageDir}/${appName}`);
+    // 检查目录结构
     if(!fs.existsSync(pageDir)){
         console.error('The directory structure is not right!');
         process.exit(1);
     }
-    const appPath = path.resolve(root,`${pageDir}/${appName}`);
-    return appPath;
+    // 检查路由配置文件是否存在
+    const hasRouteFile = fs.existsSync(routeFilePath);
+    if(!hasRouteFile){
+        console.error('The route file lost!');
+        return [appPath,[]]
+    }
+    const routeFile = path.resolve(root,routeFilePath);
+    const routePath =  `/aps/${appName}`;
+    const code = injectH0Route(routeFile,appName,cliVersion,{
+        path:routePath,
+        routes: [
+            {
+                path: `${routePath}/list`,
+                component: `@/pages/${appName}/list/listPage`,
+            },
+        ],
+    }).code;
+    return [
+        appPath,
+       [
+           {
+               code:code.replaceAll('\"','\''),
+               path:routeFile,
+           }
+       ]
+    ];
 }
 
-function injectPDATemplate(root:string,appName:string){
+function injectH0Route(
+    file:string,
+    appName:string,
+    cliVersion:string,
+    routeObj:AnyObj
+){
+    const routeName = cliVersion === 'hzeroJs' ? 'routes' : 'config';
+    const code = fs.readFileSync(file,'utf-8')
+    const ast = parse(code,{sourceType:'unambiguous',plugins:['typescript']});
+    // 区分架构版本注入路由参数
+    const visitor =cliVersion === 'hzeroJs' ? {
+        CallExpression(path: NodePath<CallExpression>) {
+            const node = path.node;
+            if(!node){
+                return;
+            }
+            const argument = node.arguments[0];
+            const {properties = []} = argument as any;
+            const target = properties.find((item:any)=>item.key&&item.key.name===routeName);
+            if(!target){
+                return;
+            }
+            target.value.elements.push(injectObj(routeObj));
+        }
+    }:{
+        VariableDeclaration(path: NodePath<VariableDeclaration>) {
+            const node = path.node;
+            if(!node){
+                return;
+            }
+            const {declarations= []} = node;
+            const target = declarations.find((item:any)=>item.id&&item.id.name===routeName);
+            if(!target){
+                return;
+            }
+            if(target.init?.type === 'ArrayExpression'){
+                target.init.elements.push(injectObj(routeObj));
+            }
+        }
+    };
+    traverse(ast, visitor);
+    return generator(ast, {}, code);
+}
+
+function injectPDATemplate(root:string,appName:string):[string,Array<InjectFile>] {
     // 检查目录结构
     const pageDir = 'src/modules';
     if(!fs.existsSync(pageDir)){
         console.error('The directory structure is not right!');
         process.exit(1);
     }
+    let code:Array<InjectFile> = [];
     const appPath = path.resolve(root,`${pageDir}/${appName}`);
-    return appPath;
+    return [appPath,code];
+}
+
+function injectH0TemplateFile(dir:string,template:TemplateName,appName:string,subModule:string) {
+    if(template==='listPage'){
+        const listFilePath = path.resolve(dir,'list/listPage.tsx');
+        const listDsPath = path.resolve(dir,'list/listPageDs.ts');
+        const listFile = fs.readFileSync(listFilePath,'utf-8');
+        const dsFile = fs.readFileSync(listDsPath,'utf-8');
+        const newAppName = `${appName.charAt(0).toLowerCase()}${appName.slice(1)}`;
+        const newListFile = listFile.replaceAll('子模块名称.功能名称',`${subModule}.${newAppName}`)
+                                .replaceAll('子模块名称',subModule);
+        const newDsFile = dsFile.replaceAll('子模块名称.功能名称',`${subModule}.${newAppName}`);
+        fs.writeFileSync(listFilePath,newListFile);
+        fs.writeFileSync(listDsPath,newDsFile);
+    }
+}
+
+function injectTemplateFile(dir:string,template:TemplateName,appName:string,subModule:string){
+    if(h0Templates.includes(template)){
+        injectH0TemplateFile(dir,template,appName,subModule);
+    }
 }
 
 function run(
     root:string,
     appName:string,
-    template:string,
+    template:TemplateName,
     version:string,
     appPath:string,
+    injectArgs:Array<InjectFile>,
+    subModule:string,
     templateVersion:string
 ) {
     const templatePath = path.resolve(__dirname,'template');
     const templateDir = path.join(templatePath, template);
+    const tempDir = path.resolve(__dirname,'tmp');
     if(fs.existsSync(templateDir)){
-        fs.copySync(templateDir,appPath);
+        fs.ensureDirSync(tempDir);
+        fs.copySync(templateDir,tempDir);
+        injectTemplateFile(tempDir,template,appName,subModule);
+        fs.copySync(tempDir,appPath);
+        fs.emptyDirSync(tempDir);
+        // 文件代码注入
+        for(const file of injectArgs){
+            fs.writeFileSync(file.path,file.code);
+        }
     }else {
         console.error(
             `Could not locate supplied template: ${green(templateDir)}`
