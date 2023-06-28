@@ -10,8 +10,7 @@ import traverse, {NodePath} from "@babel/traverse";
 import {checkThatNpmCanReadCwd, injectObj, isSafeToCreateProjectIn} from "./utils/utils";
 import {h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
 import {CallExpression, VariableDeclaration} from "@babel/types";
-
-interface InjectFile { path:string,code:string }
+import {AnyObj, InjectFile, TemplateName} from "./types";
 
 const packageJson = require("./package.json");
 
@@ -30,6 +29,7 @@ export  function init(){
         })
         .option('--template-version <string>','limit template version')
         .option('-cli,--cli-version <string>','limit cli version,in hzeroJs or hzeroCli')
+        .option('--sub-module <string>','subModule the app in,only base on H0 structure','aps')
         .allowUnknownOption()
         .on('--help', () => {
             console.log(` Must input ${green('<template-name>')} and ${green('<app-name>')}\n`);
@@ -72,21 +72,31 @@ export  function init(){
         );
         process.exit(1);
     }
+    const opts = program.opts();
     injectTemplate(
-        appName,
+        getNameByTemplate(appName,template),
         template,
         packageJson.version,
-        program.opts().templateVersion,
-        program.opts().cliVersion,
+        opts.templateVersion,
+        opts.cliVersion,
+        opts.subModule
     );
+}
+
+function getNameByTemplate(appName:string,template:TemplateName) {
+    if(template==='listPage'){
+        return `${appName.charAt(0).toUpperCase()}${appName.slice(1)}`
+    }
+    return appName;
 }
 
 function injectTemplate(
     appName:string,
-    template:string,
+    template:TemplateName,
     version:string,
     templateVersion:string,
     cliVersion:string,
+    subModule:string
 ){
     const unsupportedNodeVersion = !semver.satisfies(
         semver.coerce(process.version)||process.version,
@@ -104,7 +114,7 @@ function injectTemplate(
     const originalDirectory = process.cwd();
     const root = path.resolve(originalDirectory);
     let appPath = '';
-    const code:Array<InjectFile> = [];
+    let code:Array<InjectFile> = [];
     // 依据不同模板处理文件注入内容
     if(h0Templates.includes(template)){
         [appPath,code] = injectH0Template(root,appName,cliVersion);
@@ -127,6 +137,7 @@ function injectTemplate(
         version,
         appPath,
         code,
+        subModule,
         templateVersion,
     );
 }
@@ -135,7 +146,7 @@ function injectH0Template(
     root:string,
     appName:string,
     cliVersion:string = 'hzeroJs',
-){
+):[string,Array<InjectFile>] {
     const pageDir = 'src/pages';
     const routeFilePath = cliVersion === 'hzeroJs' ? 'config/config.ts' : 'src/config/routers.ts'
     const appPath = path.resolve(root,`${pageDir}/${appName}`);
@@ -151,13 +162,13 @@ function injectH0Template(
         return [appPath,[]]
     }
     const routeFile = path.resolve(root,routeFilePath);
-    const routePath =  `/aps/${appName.charAt(0).toLowerCase()}${appName.slice(1)}`;
+    const routePath =  `/aps/${appName}`;
     const code = injectH0Route(routeFile,appName,cliVersion,{
         path:routePath,
         routes: [
             {
                 path: `${routePath}/list`,
-                component: `@/pages/${appName.charAt(0).toUpperCase()}${appName.slice(1)}/list/listPage`,
+                component: `@/pages/${appName}/list/listPage`,
             },
         ],
     }).code;
@@ -176,7 +187,7 @@ function injectH0Route(
     file:string,
     appName:string,
     cliVersion:string,
-    routeObj:{[k:string]:any}
+    routeObj:AnyObj
 ){
     const routeName = cliVersion === 'hzeroJs' ? 'routes' : 'config';
     const code = fs.readFileSync(file,'utf-8')
@@ -189,8 +200,8 @@ function injectH0Route(
                 return;
             }
             const argument = node.arguments[0];
-            const {properties = []} = argument;
-            const target = properties.find((item)=>item.key&&item.key.name===routeName);
+            const {properties = []} = argument as any;
+            const target = properties.find((item:any)=>item.key&&item.key.name===routeName);
             if(!target){
                 return;
             }
@@ -216,31 +227,58 @@ function injectH0Route(
     return generator(ast, {}, code);
 }
 
-function injectPDATemplate(root:string,appName:string){
+function injectPDATemplate(root:string,appName:string):[string,Array<InjectFile>] {
     // 检查目录结构
     const pageDir = 'src/modules';
     if(!fs.existsSync(pageDir)){
         console.error('The directory structure is not right!');
         process.exit(1);
     }
-    let code = []
+    let code:Array<InjectFile> = [];
     const appPath = path.resolve(root,`${pageDir}/${appName}`);
     return [appPath,code];
+}
+
+function injectH0TemplateFile(dir:string,template:TemplateName,appName:string,subModule:string) {
+    if(template==='listPage'){
+        const listFilePath = path.resolve(dir,'list/listPage.tsx');
+        const listDsPath = path.resolve(dir,'list/listPageDs.ts');
+        const listFile = fs.readFileSync(listFilePath,'utf-8');
+        const dsFile = fs.readFileSync(listDsPath,'utf-8');
+        const newAppName = `${appName.charAt(0).toLowerCase()}${appName.slice(1)}`;
+        const newListFile = listFile.replaceAll('子模块名称.功能名称',`${subModule}.${newAppName}`)
+                                .replaceAll('子模块名称',subModule);
+        const newDsFile = dsFile.replaceAll('子模块名称.功能名称',`${subModule}.${newAppName}`);
+        fs.writeFileSync(listFilePath,newListFile);
+        fs.writeFileSync(listDsPath,newDsFile);
+    }
+}
+
+function injectTemplateFile(dir:string,template:TemplateName,appName:string,subModule:string){
+    if(h0Templates.includes(template)){
+        injectH0TemplateFile(dir,template,appName,subModule);
+    }
 }
 
 function run(
     root:string,
     appName:string,
-    template:string,
+    template:TemplateName,
     version:string,
     appPath:string,
     injectArgs:Array<InjectFile>,
+    subModule:string,
     templateVersion:string
 ) {
     const templatePath = path.resolve(__dirname,'template');
     const templateDir = path.join(templatePath, template);
+    const tempDir = path.resolve(__dirname,'tmp');
     if(fs.existsSync(templateDir)){
-        fs.copySync(templateDir,appPath);
+        fs.ensureDirSync(tempDir);
+        fs.copySync(templateDir,tempDir);
+        injectTemplateFile(tempDir,template,appName,subModule);
+        fs.copySync(tempDir,appPath);
+        fs.emptyDirSync(tempDir);
         // 文件代码注入
         for(const file of injectArgs){
             fs.writeFileSync(file.path,file.code);
