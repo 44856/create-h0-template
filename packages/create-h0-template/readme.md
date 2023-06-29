@@ -22,6 +22,7 @@ npx create-h0-template <app-name> <template-name> [options]
 
 ## H0
  listPage: 普通列表页面
+ filterList: filterBar列表页面
 
 ## PDA
 

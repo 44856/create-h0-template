@@ -8,7 +8,7 @@ import generator from "@babel/generator";
 import { parse } from "@babel/parser";
 import traverse, {NodePath} from "@babel/traverse";
 import {checkThatNpmCanReadCwd, injectObj, isSafeToCreateProjectIn} from "./utils/utils";
-import {h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
+import {h0ListTemplates, h0Templates, pdaTemplates, supportTemplate} from "./utils/constants";
 import {CallExpression, VariableDeclaration} from "@babel/types";
 import {AnyObj, InjectFile, TemplateName} from "./types";
 
@@ -84,7 +84,7 @@ export  function init(){
 }
 
 function getNameByTemplate(appName:string,template:TemplateName) {
-    if(template==='listPage'){
+    if(h0ListTemplates.includes(template)){
         return `${appName.charAt(0).toUpperCase()}${appName.slice(1)}`
     }
     return appName;
@@ -240,7 +240,7 @@ function injectPDATemplate(root:string,appName:string):[string,Array<InjectFile>
 }
 
 function injectH0TemplateFile(dir:string,template:TemplateName,appName:string,subModule:string) {
-    if(template==='listPage'){
+    if(h0ListTemplates.includes(template)){
         const listFilePath = path.resolve(dir,'list/listPage.tsx');
         const listDsPath = path.resolve(dir,'list/listPageDs.ts');
         const listFile = fs.readFileSync(listFilePath,'utf-8');
