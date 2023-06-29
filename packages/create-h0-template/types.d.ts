@@ -1,5 +1,6 @@
 export enum TemplateName{
-    listPage = 'listPage'
+    listPage = 'listPage',
+    filterList = 'filterList',
 }
 
 export interface InjectFile { path:string,code:string }
