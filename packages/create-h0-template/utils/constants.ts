@@ -1,9 +1,13 @@
 const supportTemplate = [
-    'listPage', 'filterList', 'pda', 'pad'
+    'listPage', 'filterList', 'headLineList', 'pda', 'pad'
 ]
 
 const h0Templates = [
-    'listPage', 'filterList'
+    'listPage', 'filterList', 'headLineList'
+]
+
+const h0LineListTemplates = [
+    'headLineList',
 ]
 
 const h0ListTemplates = [
@@ -14,4 +18,4 @@ const pdaTemplates = [
     'pda', 'pad'
 ]
 
-export {supportTemplate, h0Templates,h0ListTemplates,pdaTemplates};
+export {supportTemplate, h0Templates, h0ListTemplates,h0LineListTemplates, pdaTemplates};
