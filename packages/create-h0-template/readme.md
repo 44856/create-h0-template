@@ -23,6 +23,7 @@ npx create-h0-template <app-name> <template-name> [options]
 ## H0
 - listPage: 普通列表页面
 - filterList: filterBar列表页面
+- headLineList 头行列表，注意配置头的主键配置，查询条样式为普通列表页面样式（参考listPage）
 
 ## PDA
 

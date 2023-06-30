@@ -1,12 +1,13 @@
 {
   "name": "create-h0-template",
-  "version": "1.0.5-0.0.7",
+  "version": "1.0.5-0.0.9",
   "description": "依据模板创建项目文件",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/44856/create-h0-template.git",
     "directory": "packages/create-h0-template"
   },
+  "homepage": "https://github.com/44856/create-h0-template/tree/main/packages/create-h0-template",
   "engines": {
     "node": ">=14"
   },
