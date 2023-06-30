@@ -21,8 +21,8 @@ npx create-h0-template <app-name> <template-name> [options]
 # 支持模板类型
 
 ## H0
- listPage: 普通列表页面
- filterList: filterBar列表页面
+- listPage: 普通列表页面
+- filterList: filterBar列表页面
 
 ## PDA
 
