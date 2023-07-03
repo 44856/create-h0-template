@@ -248,7 +248,7 @@ function injectH0TemplateFile(dir: string, template: TemplateName, appName: stri
     // HO
     if (h0ListTemplates.includes(template)) {
         const listFilePath = path.resolve(dir, 'list/listPage.tsx');
-        const listDsPath = path.resolve(dir, 'list/listPageDs.ts');
+        const listDsPath = path.resolve(dir, 'stores/listPageDs.ts');
         const listFile = fs.readFileSync(listFilePath, 'utf-8');
         const dsFile = fs.readFileSync(listDsPath, 'utf-8');
         const newAppName = `${appName.charAt(0).toLowerCase()}${appName.slice(1)}`;
@@ -259,7 +259,7 @@ function injectH0TemplateFile(dir: string, template: TemplateName, appName: stri
         fs.writeFileSync(listDsPath, newDsFile);
         // 一些特殊的处理
         if (h0LineListTemplates.includes(template)) {
-            const lineDsPath = path.resolve(dir, 'list/lineListDs.ts');
+            const lineDsPath = path.resolve(dir, 'stores/lineListDs.ts');
             const lineDsFile = fs.readFileSync(lineDsPath, 'utf-8');
             const newLineDsFile = dsFile.replaceAll('子模块名称.功能名称', `${subModule}.${newAppName}`);
             fs.writeFileSync(lineDsFile, newLineDsFile);
